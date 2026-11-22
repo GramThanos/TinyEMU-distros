@@ -1,0 +1,38 @@
+# Debian 12 "bookworm" (i386) — minimal rootfs on a virtio-block disk.
+# Built by: scripts/build.sh debian-12-x86
+name: debian-12-x86
+description: Debian 12 bookworm (i386), slim rootfs on a virtio-block disk.
+arch: x86
+backend: debian
+
+rootfs:
+  # The official i386/debian:bookworm-slim image (Debian 12.15, debuerreotype
+  # build of 2026-11-04), pinned by its single layer's digest: see
+  # https://github.com/debuerreotype/docker-debian-artifacts/tree/b857e9d160eb0e9a3825bd4c44577358ea11ecf2/bookworm/slim
+  # (oci/index.json names the layer). To update, take the new layer digest from
+  # the dist-i386 branch.
+  image: i386/debian
+  digest: sha256:cf916cd28bf8a94b890c149d6b2cdc665c8beb3378aa9c98a18b6ec1bfe54b0c
+  size_mb: 256
+  packages:                       # via a chroot'd apt-get at build time
+    - python3
+    - nano
+    - procps                      # ps, top, pkill
+    - less
+
+kernel:
+  # The same kernel as alpine-3.20-x86: kernel.org LTS + the tinyemu fragment.
+  source: build
+  version: "6.12.109"
+
+disk:
+  mode: block
+  block_size_kb: 512               # chunk size; must match chunk.py -b
+  compression: gzip               # blk*.bin.gz; needs a 2026-11+ TinyEMU (none: raw .bin)
+
+vm:
+  machine: pc
+  memory_mb: 256
+  # The slim image has no init system (it is a container base), so boot
+  # straight to a root shell on the hvc0 console, as the Alpine image does.
+  cmdline: "loglevel=1 console=hvc0 root=/dev/vda rw init=/bin/sh"

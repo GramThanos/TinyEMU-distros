@@ -1,0 +1,57 @@
+# TinyEMU x86 guest — kernel config fragment.
+#
+# Merged onto the arch base defconfig (i386_defconfig) by scripts/kernel.sh via
+# the kernel tree's scripts/kconfig/merge_config.sh, then resolved with
+# `make olddefconfig`. Only the options TinyEMU's machine actually needs are
+# forced here; everything else stays at the defconfig default.
+#
+# All boot-critical drivers are built in (=y), so the kernel boots with no
+# initramfs and no modules.
+
+# --- virtio transport + devices (TinyEMU exposes virtio over PCI) ---
+CONFIG_PCI=y
+CONFIG_VIRTIO=y
+CONFIG_VIRTIO_PCI=y
+CONFIG_VIRTIO_PCI_LEGACY=y
+CONFIG_VIRTIO_MMIO=y
+CONFIG_VIRTIO_BLK=y
+CONFIG_VIRTIO_NET=y
+CONFIG_VIRTIO_CONSOLE=y
+
+# --- console: virtio-console provides hvc0 (recipes boot console=hvc0) ---
+CONFIG_HVC_DRIVER=y
+CONFIG_VIRTIO_CONSOLE=y
+
+# --- root filesystem (drive0 is an ext2 image; ext4 can read it too) ---
+CONFIG_EXT2_FS=y
+CONFIG_EXT4_FS=y
+
+# --- optional NIC (eth0) ---
+CONFIG_E1000=y
+
+# --- 9p, for disk.mode: 9p (fs0) guests ---
+CONFIG_NET_9P=y
+CONFIG_NET_9P_VIRTIO=y
+CONFIG_9P_FS=y
+
+# --- non-PAE 4 KB paging: simplest path for the software CPU (128 MB guests
+#     never need highmem). PAE also works on the current engine, but keep the
+#     default lean. ---
+CONFIG_HIGHMEM4G=y
+# CONFIG_HIGHMEM64G is not set
+
+# --- drop big driver subsystems a headless virtio guest never has. The console
+#     is hvc0 (virtio-console), not VGA/framebuffer, so DRM/FB go too. This cuts
+#     the kernel roughly in half and the build time with it (smaller kernel =
+#     faster browser download). Re-enable any you actually need. ---
+# CONFIG_DRM is not set
+# CONFIG_AGP is not set
+# CONFIG_FB is not set
+# CONFIG_SOUND is not set
+# CONFIG_MEDIA_SUPPORT is not set
+# CONFIG_WLAN is not set
+# CONFIG_USB_SUPPORT is not set
+# CONFIG_MMC is not set
+# CONFIG_INFINIBAND is not set
+# CONFIG_HID is not set
+# CONFIG_I2C is not set

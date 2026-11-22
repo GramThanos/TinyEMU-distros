@@ -1,0 +1,35 @@
+# Alpine Linux 3.20 (i686) — minimal rootfs on a virtio-block disk.
+# Built by: scripts/build.sh alpine-3.20-x86
+name: alpine-3.20-x86
+description: Alpine Linux 3.20 (i686), minimal rootfs on a virtio-block disk.
+arch: x86                         # x86 | riscv32 | riscv64 (framework is arch-ready)
+backend: alpine                   # alpine | debian | buildroot
+
+rootfs:
+  version: "3.20.3"
+  mirror: https://dl-cdn.alpinelinux.org/alpine
+  # tarball name under $mirror/v3.20/releases/$arch/
+  minirootfs: alpine-minirootfs-3.20.3-x86.tar.gz
+  size_mb: 128                    # ext2 image size (mke2fs -d)
+  packages:                       # added via chroot'd apk, else at first boot
+    - python3
+    - nano
+
+kernel:
+  source: build                   # build | prebuilt | buildroot
+  version: "6.12.109"             # built from kernel.org (v6.x LTS) for source: build
+  # Quick alternative — fetch a prebuilt kernel instead of compiling one:
+  #   source: prebuilt
+  #   url: https://bellard.org/jslinux/kernel-x86.bin
+
+disk:
+  mode: block                     # block (drive0 chunked) | 9p (fs0)
+  block_size_kb: 512               # chunk size; must match chunk.py -b
+  compression: gzip               # blk*.bin.gz; needs a 2026-11+ TinyEMU (none: raw .bin)
+
+vm:
+  machine: pc
+  memory_mb: 128
+  # The base minirootfs has no init/getty configured, so boot straight to a
+  # shell on the hvc0 console. (A full Alpine with OpenRC would drop init=.)
+  cmdline: "loglevel=1 console=hvc0 root=/dev/vda rw init=/bin/sh"

@@ -1,0 +1,80 @@
+# TinyEMU RISC-V guest — kernel config fragment.
+#
+# Merged onto the arch defconfig (defconfig for riscv64, rv32_defconfig for
+# riscv32) by scripts/kernel.sh, then resolved with `make olddefconfig`. As for
+# x86, everything boot-critical is built in (=y): no initramfs, no modules.
+#
+# TinyEMU's riscv machine: one hart, CLINT + PLIC, HTIF, and virtio over MMIO
+# (not PCI). OpenSBI (scripts/firmware.sh) runs in M-mode below the kernel.
+
+# --- virtio over MMIO: console, block, net, 9p ---
+CONFIG_VIRTIO=y
+CONFIG_VIRTIO_MMIO=y
+CONFIG_VIRTIO_BLK=y
+CONFIG_VIRTIO_NET=y
+CONFIG_VIRTIO_CONSOLE=y
+CONFIG_HVC_DRIVER=y
+
+# --- hvc0 must be the virtio console: the SBI console would take hvc0 first ---
+# CONFIG_HVC_RISCV_SBI is not set
+
+# --- interrupt controller and timer of the machine ---
+CONFIG_SIFIVE_PLIC=y
+CONFIG_RISCV_TIMER=y
+
+# --- root filesystem and 9p volumes ---
+CONFIG_EXT2_FS=y
+CONFIG_EXT4_FS=y
+CONFIG_NET_9P=y
+CONFIG_NET_9P_VIRTIO=y
+CONFIG_9P_FS=y
+
+# --- no SoC platforms: TinyEMU is none of them, and their drivers are most of
+#     defconfig's size ---
+# CONFIG_ARCH_ANDES is not set
+# CONFIG_ARCH_MICROCHIP is not set
+# CONFIG_ARCH_MICROCHIP_POLARFIRE is not set
+# CONFIG_ARCH_RENESAS is not set
+# CONFIG_ARCH_SIFIVE is not set
+# CONFIG_ARCH_SOPHGO is not set
+# CONFIG_ARCH_STARFIVE is not set
+# CONFIG_ARCH_SUNXI is not set
+# CONFIG_ARCH_THEAD is not set
+# CONFIG_ARCH_VIRT is not set
+# CONFIG_ARCH_CANAAN is not set
+# CONFIG_ARCH_SPACEMIT is not set
+# CONFIG_SOC_MICROCHIP_POLARFIRE is not set
+# CONFIG_SOC_SIFIVE is not set
+# CONFIG_SOC_STARFIVE is not set
+# CONFIG_SOC_VIRT is not set
+# CONFIG_ERRATA_SIFIVE is not set
+# CONFIG_ERRATA_THEAD is not set
+# CONFIG_ERRATA_ANDES is not set
+
+# --- the CPU has none of these; leave the code (and its boot-time probing) out ---
+# CONFIG_RISCV_ISA_V is not set
+# CONFIG_RISCV_ISA_SVNAPOT is not set
+# CONFIG_RISCV_ISA_SVPBMT is not set
+# CONFIG_RISCV_ISA_ZICBOM is not set
+# CONFIG_RISCV_ISA_ZICBOZ is not set
+# CONFIG_KVM is not set
+# CONFIG_EFI is not set
+
+# --- drop big driver subsystems a headless virtio guest never has (as on x86) ---
+# CONFIG_PCI is not set
+# CONFIG_DRM is not set
+# CONFIG_FB is not set
+# CONFIG_SOUND is not set
+# CONFIG_MEDIA_SUPPORT is not set
+# CONFIG_WLAN is not set
+# CONFIG_USB_SUPPORT is not set
+# CONFIG_MMC is not set
+# CONFIG_INFINIBAND is not set
+# CONFIG_HID is not set
+# CONFIG_I2C is not set
+# CONFIG_SPI is not set
+# CONFIG_MTD is not set
+# CONFIG_INPUT_TOUCHSCREEN is not set
+# CONFIG_ETHERNET is not set
+# CONFIG_BT is not set
+# CONFIG_CAN is not set

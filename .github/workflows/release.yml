@@ -1,0 +1,57 @@
+# Build distro images on GitHub and publish each as a GitHub Release asset:
+# release `distro-<name>`, asset `<name>.tar` (kernel.bin, bios.bin for RISC-V,
+# blk.txt, blk*.bin[.gz], config.cfg with a literal ${ASSET_BASE}).
+# Run by hand: Actions -> release -> Run workflow.
+name: release
+
+on:
+  workflow_dispatch:
+    inputs:
+      recipes:
+        description: 'Recipes to build, space-separated, or "all"'
+        required: false
+        default: all
+
+permissions:
+  contents: write
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      recipes: ${{ steps.list.outputs.recipes }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: list
+        env:
+          WANT: ${{ inputs.recipes }}
+        run: |
+          all=$(ls recipes)
+          if [ -z "$WANT" ] || [ "$WANT" = all ]; then sel="$all"; else sel="$WANT"; fi
+          for r in $sel; do
+            [ -f "recipes/$r/recipe.yml" ] || { echo "no recipe: $r"; exit 1; }
+          done
+          echo "recipes=$(printf '%s\n' $sel | jq -R . | jq -sc .)" >> "$GITHUB_OUTPUT"
+
+  build:
+    needs: plan
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    strategy:
+      fail-fast: false
+      matrix:
+        recipe: ${{ fromJSON(needs.plan.outputs.recipes) }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build the builder image
+        run: docker compose build builder
+      - name: Build ${{ matrix.recipe }}
+        # build/ made here, not by the (root) container, so publish.sh can write
+        # build/<name>.tar as the runner user.
+        run: |
+          mkdir -p build
+          RECIPE=${{ matrix.recipe }} docker compose run --rm build
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash scripts/publish.sh ${{ matrix.recipe }}

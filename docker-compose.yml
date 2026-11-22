@@ -1,0 +1,32 @@
+# Distro image builder. Usage (from the repo root):
+#   docker compose build builder
+#   RECIPE=alpine-3.20-x86 docker compose run --rm build
+#   RECIPE=alpine-3.20-riscv64 docker compose run --rm build
+#   RECIPE=alpine-3.20-x86 docker compose run --rm publish
+#
+# The repo is mounted at /work; output lands on the host in build/.
+services:
+  builder:
+    build: .
+    image: tinyemu-distro-builder
+    volumes:
+      - .:/work
+
+  build:
+    image: tinyemu-distro-builder
+    volumes:
+      - .:/work
+    entrypoint: ["bash", "scripts/build.sh"]
+    # Privileged only so scripts/binfmt.sh can register QEMU for RISC-V recipes
+    # (their apk / apt-get runs in a riscv64 chroot); x86 builds do not need it.
+    privileged: true
+    command: ["${RECIPE:-alpine-3.20-x86}"]
+
+  publish:
+    image: tinyemu-distro-builder
+    volumes:
+      - .:/work
+    environment:
+      - GITHUB_TOKEN
+    entrypoint: ["bash", "scripts/publish.sh"]
+    command: ["${RECIPE:-alpine-3.20-x86}"]
