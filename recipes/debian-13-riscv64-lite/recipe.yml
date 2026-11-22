@@ -3,7 +3,7 @@
 #
 # Debian 13, not 12: riscv64 became an official Debian architecture with trixie.
 name: debian-13-riscv64-lite
-description: Debian 13 trixie (riscv64) lite: no init, boots to a root shell.
+description: "Debian 13 trixie (riscv64) lite, no init: boots to a root shell."
 arch: riscv64
 backend: debian
 

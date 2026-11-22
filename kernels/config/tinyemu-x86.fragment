@@ -50,6 +50,9 @@ CONFIG_HIGHMEM4G=y
 # CONFIG_SOUND is not set
 # CONFIG_MEDIA_SUPPORT is not set
 # CONFIG_WLAN is not set
+# the wireless stack itself: with no WLAN drivers it only logs
+# "cfg80211: failed to load regulatory.db" at every boot
+# CONFIG_CFG80211 is not set
 # CONFIG_USB_SUPPORT is not set
 # CONFIG_MMC is not set
 # CONFIG_INFINIBAND is not set

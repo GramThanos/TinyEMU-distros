@@ -1,7 +1,7 @@
 # Debian 12 "bookworm" (i386) — LITE: minimal rootfs, no init system, on a virtio-block disk.
 # Built by: scripts/build.sh debian-12-x86-lite
 name: debian-12-x86-lite
-description: Debian 12 bookworm (i386) lite: no init, boots to a root shell.
+description: "Debian 12 bookworm (i386) lite, no init: boots to a root shell."
 arch: x86
 backend: debian
 

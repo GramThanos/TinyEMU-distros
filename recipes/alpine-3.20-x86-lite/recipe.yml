@@ -1,7 +1,7 @@
 # Alpine Linux 3.20 (i686) — LITE: minimal rootfs, no init system, on a virtio-block disk.
 # Built by: scripts/build.sh alpine-3.20-x86-lite
 name: alpine-3.20-x86-lite
-description: Alpine Linux 3.20 (i686) lite: no init, boots to a root shell.
+description: "Alpine Linux 3.20 (i686) lite, no init: boots to a root shell."
 arch: x86                         # x86 | riscv32 | riscv64 (framework is arch-ready)
 backend: alpine                   # alpine | debian | buildroot
 
