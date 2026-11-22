@@ -1,2 +1,3 @@
 Welcome to Debian 12 bookworm (TinyEMU / software x86 CPU).
 This rootfs was built by scripts/build.sh from recipes/debian-12-x86.
+sysvinit is the init system; add packages with `apt-get update && apt-get install <name>`.

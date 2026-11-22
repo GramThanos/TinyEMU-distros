@@ -6,8 +6,9 @@
 # Adds packages via a chroot'd apk when the host can run the guest arch (i686
 # runs on x86_64 with 32-bit libs; riscv64 through QEMU user mode, set up by
 # scripts/binfmt.sh); otherwise skips them with a warning so they can be added
-# at first boot. Applies the recipe overlay/. The kernel is handled
-# separately by scripts/kernel.sh.
+# at first boot. Applies the recipe overlay/, then runs the recipe's setup.sh
+# (if any) inside the rootfs. The kernel is handled separately by
+# scripts/kernel.sh.
 #
 # Emits: <out>/rootfs.ext2
 set -euo pipefail
@@ -44,6 +45,14 @@ fi
 if [ -d "$recipe_dir/overlay" ]; then
   echo "-- applying overlay/"
   cp -a "$recipe_dir/overlay/." "$work/"
+fi
+
+if [ -f "$recipe_dir/setup.sh" ]; then
+  echo "-- running setup.sh in the rootfs"
+  cp "$recipe_dir/setup.sh" "$work/tmp/setup.sh"
+  bash "$here/binfmt.sh" "$arch" && chroot "$work" /bin/sh /tmp/setup.sh \
+    || { echo "!! setup.sh failed"; exit 1; }
+  rm -f "$work/tmp/setup.sh"
 fi
 
 echo "-- mke2fs -d (${size_mb} MB, no mount)"

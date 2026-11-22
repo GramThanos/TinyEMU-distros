@@ -93,7 +93,8 @@ correct `--asset-base`.
 **Cause:** the kernel lacks virtio-console (`hvc0`) or the rootfs runs no
 getty/init on the console.
 **Fix:** use a kernel with `CONFIG_VIRTIO_CONSOLE` ([kernels.md](kernels.md));
-either run a getty on `hvc0` in the rootfs or boot with `init=/bin/sh`.
+either run a getty on `hvc0` in the rootfs (as the full recipes' `overlay/etc/inittab`
+does) or boot with `init=/bin/sh` (as the `-lite` recipes do).
 
 ### Kernel panics: can't mount root / `/dev/vda` missing
 **Cause:** the kernel lacks virtio-blk, or `root=`/filesystem type is wrong.

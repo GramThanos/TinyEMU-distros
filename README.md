@@ -19,7 +19,8 @@ To grab a TinyEMU build, visit my [TinyEMU](https://github.com/gramthanos/TinyEM
 ├── recipes/<name>/            COMMITTED, declarative
 │   ├── recipe.yml             backend, arch, rootfs source, kernel, disk, vm
 │   ├── config.cfg.tmpl        templated TinyEMU .cfg ($ASSET_BASE + recipe vals)
-│   └── overlay/               files copied into the rootfs (init, motd, users, ...)
+│   ├── overlay/               files copied into the rootfs (inittab, motd, network, ...)
+│   └── setup.sh               optional: run in the rootfs (chroot) to enable services etc.
 ├── scripts/
 │   ├── build.sh <name>        dispatcher: recipe -> backend -> kernel -> firmware -> chunk -> .cfg
 │   ├── backends/
@@ -81,12 +82,22 @@ sed -i 's#${ASSET_BASE}#https://cdn.example.com/tinyemu/alpine-3.20-x86#g' \
 
 Helpers: `bash scripts/publish.sh [-t TAG] <dist>...` packages + uploads to a GitHub Release (the `release` workflow builds all recipes into one tagged release, see [docs/hosting-and-boot.md](docs/hosting-and-boot.md)); `bash scripts/stage-web.sh <dist> <jsLab-dir> [origin]` copies a build into a [jsLab](https://github.com/gramthanos/jsLab) checkout for local testing (writes `_distro/manifest.json`; open `demos/linux-distro.html`).
 
+## Recipes
+
+Every distro comes in two variants:
+
+| Recipe | Init | Extras |
+|--------|------|--------|
+| `alpine-3.20-x86`, `alpine-3.20-riscv64` | OpenRC | DHCP networking, root autologin on `hvc0`; python3, nano, less, curl, htop |
+| `debian-12-x86`, `debian-13-riscv64` | sysvinit | DHCP networking, root autologin on `hvc0`; python3, nano, less, curl, htop, procps, iproute2, ping |
+| `*-lite` (e.g. `alpine-3.20-x86-lite`) | none: `init=/bin/sh` | a bare root shell as PID 1; python3, nano (+ procps, less on Debian). Smallest and fastest to boot. |
+
 ## Status
 
-- **Alpine x86 — done & verified.** `build.sh alpine-3.20-x86` produces a clean `build/alpine-3.20-x86/`; boots to a root shell natively (`temu-soft`, raw `drive0`) and in-browser (chunked HTTP, jsLab's `demos/linux-distro.html` and the multi-VM `demos/demo.html`, inline + worker).
+- **Alpine x86 — done & verified.** `build.sh alpine-3.20-x86-lite` produces a clean `build/alpine-3.20-x86-lite/`; boots to a root shell natively (`temu-soft`, raw `drive0`) and in-browser (chunked HTTP, jsLab's `demos/linux-distro.html` and the multi-VM `demos/demo.html`, inline + worker).
 - **Kernel from source.** `kernel.source: build` compiles a vanilla Linux kernel (default 6.12 LTS; 5.15 also verified) with a TinyEMU config fragment — no dependence on a prebuilt binary. `prebuilt` (fetch a URL) still works. See [docs/kernels.md](docs/kernels.md).
-- **Debian 12 x86** — `recipes/debian-12-x86/`: the official `i386/debian:bookworm-slim` layer, pinned by digest, plus python3, nano, procps and less; boots to a root shell on `hvc0`.
-- **RISC-V (riscv64)** — `recipes/alpine-3.20-riscv64/` and `recipes/debian-13-riscv64/`: the same kernel cross-compiled, OpenSBI as firmware (`bios.bin`), packages installed under QEMU user mode. Needs a TinyEMU build with the riscv fixes of 2026-11. See [docs/riscv.md](docs/riscv.md).
+- **Debian 12 x86** — `recipes/debian-12-x86[-lite]/`: the official `i386/debian:bookworm-slim` layer, pinned by digest.
+- **RISC-V (riscv64)** — `recipes/alpine-3.20-riscv64[-lite]/` and `recipes/debian-13-riscv64[-lite]/`: the same kernel cross-compiled, OpenSBI as firmware (`bios.bin`), packages installed under QEMU user mode. Needs a TinyEMU build with the riscv fixes of 2026-11. See [docs/riscv.md](docs/riscv.md).
 - **Later:** buildroot backend, riscv32, integrity hashes. See [future-work.md](future-work.md).
 
 ## Licence

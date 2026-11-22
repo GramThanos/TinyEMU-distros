@@ -1,0 +1,7 @@
+auto lo
+iface lo inet loopback
+
+# TinyEMU's eth0 (user-mode networking natively, the page's network in a browser).
+# udhcpc backgrounds itself if no lease comes, so boot does not wait on it.
+auto eth0
+iface eth0 inet dhcp

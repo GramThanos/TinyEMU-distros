@@ -58,8 +58,8 @@ How the rootfs is made differs per flavour (unpack a tarball vs. build from sour
 The **common rootfs recipe** the tarball backends share is:
 
 1. Fetch + unpack the rootfs tarball into a staging dir `rootfs.dir/`.
-2. Apply the recipe's `overlay/` on top (`cp -a overlay/. rootfs.dir/`).
-3. Optionally add packages (Alpine: a chroot'd `apk`).
+2. Optionally add packages (a chroot'd `apk` / `apt-get`).
+3. Apply the recipe's `overlay/` on top (`cp -a overlay/. rootfs.dir/`), then run its `setup.sh`, if it has one, inside the rootfs (chroot).
 4. `mke2fs -q -t ext2 -d rootfs.dir rootfs.ext2 <size_mb>M`, build ext2 straight from the directory, no mount.
 5. `tune2fs -c0 -i0 rootfs.ext2`, disable the mount-count / time-based fsck so the guest never forces a check on boot.
 

@@ -1,9 +1,10 @@
-# Debian 13 "trixie" (riscv64) — minimal rootfs on a virtio-block disk.
+# Debian 13 "trixie" (riscv64) — with sysvinit and basic utilities, on a virtio-block disk.
 # Built by: scripts/build.sh debian-13-riscv64
+# (recipes/debian-13-riscv64-lite is the same distro with no init: a bare root shell.)
 #
 # Debian 13, not 12: riscv64 became an official Debian architecture with trixie.
 name: debian-13-riscv64
-description: Debian 13 trixie (riscv64), slim rootfs on a virtio-block disk.
+description: Debian 13 trixie (riscv64) with sysvinit, networking and basic utilities.
 arch: riscv64
 backend: debian
 
@@ -15,12 +16,26 @@ rootfs:
   # the dist-riscv64 branch.
   image: riscv64/debian
   digest: sha256:4b8428ae1a4b0dfd18fb4aa2bf9a6a71d7217123155666c4225a7e1b9aa074af
-  size_mb: 256
+  size_mb: 384
   packages:                       # via a chroot'd apt-get under QEMU user mode
-    - python3
-    - nano
+    # init: sysvinit, not systemd, which is far too heavy for a software CPU
+    - sysvinit-core
+    - login
+    - e2fsprogs                   # logsave + fsck, which the boot scripts use (not essential in trixie)
+    # networking: ifupdown brings eth0 up with udhcpc at boot
+    - ifupdown
+    - udhcpc
+    - iproute2
+    - iputils-ping
+    - curl
+    - ca-certificates
+    # tools
     - procps                      # ps, top, pkill
+    - htop
     - less
+    - nano
+    - python3
+  # setup.sh (next to this file) then unlocks root.
 
 kernel:
   source: build
@@ -38,5 +53,8 @@ disk:
 vm:
   machine: riscv64
   memory_mb: 256
-  # The slim image has no init system, so boot straight to a root shell on hvc0.
-  cmdline: "loglevel=1 console=hvc0 root=/dev/vda rw init=/bin/sh"
+  # No init=: the kernel runs /sbin/init (sysvinit), which runs the rc scripts
+  # and a root autologin on hvc0 (overlay/etc/inittab).
+  # No loglevel=: the kernel prints its boot log on hvc0, so a slow boot shows
+  # progress from the first second (the -lite recipes keep loglevel=1, quiet).
+  cmdline: "console=hvc0 root=/dev/vda rw"

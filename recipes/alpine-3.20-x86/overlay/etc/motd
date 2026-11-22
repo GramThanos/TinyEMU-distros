@@ -1,2 +1,3 @@
 Welcome to Alpine Linux (TinyEMU / software x86 CPU).
 This rootfs was built by scripts/build.sh from recipes/alpine-3.20-x86.
+OpenRC is the init system; add packages with `apk add <name>`.

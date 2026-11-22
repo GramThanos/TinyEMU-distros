@@ -1,0 +1,2 @@
+Welcome to Debian 13 trixie (TinyEMU / software RISC-V CPU).
+This rootfs was built by scripts/build.sh from recipes/debian-13-riscv64-lite.

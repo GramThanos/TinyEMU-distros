@@ -1,10 +1,17 @@
 # Flavour: Alpine Linux
 
-The `build.sh alpine-3.20-x86` produces a clean image that boots to a root shell natively (raw `drive0`) and in-browser (chunked HTTP).
+Two recipes per arch, built from the same minirootfs:
+
+| Recipe | Boots into | Packages | Disk |
+|--------|-----------|----------|------|
+| [`alpine-3.20-x86`](../recipes/alpine-3.20-x86) | OpenRC, DHCP on eth0, root autologin on `hvc0` | alpine-base, ifupdown-ng, python3, nano, less, curl, htop | 192 MB |
+| [`alpine-3.20-x86-lite`](../recipes/alpine-3.20-x86-lite) | a root shell as PID 1 (`init=/bin/sh`) | python3, nano | 128 MB |
+
+(`alpine-3.20-riscv64` and `alpine-3.20-riscv64-lite` are the same for RISC-V, see [riscv.md](riscv.md).)
+The lite image boots to a root shell natively (raw `drive0`) and in-browser (chunked HTTP).
 This is the reference flavour, you may copy it when starting a new tarball-based distro.
 
-Backend: [`scripts/backends/alpine.sh`](../scripts/backends/alpine.sh) ·
-Recipe: [`recipes/alpine-3.20-x86/`](../recipes/alpine-3.20-x86)
+Backend: [`scripts/backends/alpine.sh`](../scripts/backends/alpine.sh)
 
 ## How the backend works
 
@@ -16,7 +23,8 @@ Given `<recipe_dir>` and `<out>` it:
 2. `curl`s the tarball and untars it into `rootfs.dir/`.
 3. **Packages** (`rootfs.packages`): copies the host `/etc/resolv.conf` in, then runs `chroot rootfs.dir /sbin/apk --no-cache add <pkgs>`. On x86_64 hosts this works for i686 guests (32-bit ELF runs under WSL2/most Linux). If the chroot can't execute the guest arch, it prints a warning and continues (add those packages at first boot instead).
 4. **Overlay**: `cp -a overlay/. rootfs.dir/` (see below).
-5. `mke2fs -q -t ext2 -d rootfs.dir rootfs.ext2 <size_mb>M` then `tune2fs -c0 -i0` — build the ext2 with no mount, disable forced fsck.
+5. **setup.sh**, when the recipe has one: run inside the rootfs with `chroot` (the full recipe enables its OpenRC services there).
+6. `mke2fs -q -t ext2 -d rootfs.dir rootfs.ext2 <size_mb>M` then `tune2fs -c0 -i0` — build the ext2 with no mount, disable forced fsck.
 
 The kernel is then produced by the shared `kernel.sh` step, not the backend. The Alpine recipe defaults to `kernel.source: build` (compile Linux 6.12 LTS from source); You may set `kernel.source: prebuilt` for a faster build using a prebuild kernel. See [kernels.md](kernels.md).
 
@@ -52,12 +60,17 @@ They're installed at build time via chroot'd `apk`. If the build host can't run 
 
 ### Files in the image (`overlay/`)
 
-Anything under `recipes/<name>/overlay/` is copied onto the rootfs, preserving paths. The seed ships an MOTD:
+Anything under `recipes/<name>/overlay/` is copied onto the rootfs, preserving paths. The lite recipe ships only an MOTD; the full one also sets up the console and the network:
 
 ```
 recipes/alpine-3.20-x86/overlay/
-└── etc/
-    └── motd
+├── etc/
+│   ├── fstab                 / on /dev/vda
+│   ├── hostname, hosts       tinyemu-alpine
+│   ├── inittab               OpenRC + a getty on hvc0
+│   ├── motd
+│   └── network/interfaces    lo + eth0 by DHCP
+└── usr/local/sbin/autologin  what that getty runs: login -f root
 ```
 
 Use it for `/etc/motd`, `/etc/hostname`, a profile script, seed files, a custom init script, etc. Example, add a login banner and a hostname:
@@ -72,13 +85,16 @@ nano recipes/alpine-3.20-x86/overlay/etc/motd
 
 `rootfs.size_mb` is the ext2 size. It must comfortably exceed the unpacked tree plus installed packages plus headroom for guest writes. 128 MB fits a minimal Alpine + a couple of packages; bump it if `mke2fs -d` complains it can't fit the tree, or if the guest needs to have more space.
 
-### Real init instead of `init=/bin/sh`
+### init: the full recipe vs. lite
 
-The minirootfs has no init configured, so the recipe uses `init=/bin/sh`. To boot a full Alpine:
+The minirootfs has no init system, so the lite recipe boots with `init=/bin/sh`. The full recipe boots a real Alpine:
 
-1. `apk add openrc` (and configure services) in the overlay or at first boot.
-2. Set up the console in `/etc/inittab` (a getty on `hvc0`).
-3. Drop `init=/bin/sh` from `vm.cmdline`.
+1. `alpine-base` in `packages` brings OpenRC and busybox's init.
+2. `overlay/etc/inittab` runs OpenRC and puts the only getty on `hvc0` (the minirootfs one names `tty1`..`tty6`, which TinyEMU doesn't have), logging root in at once.
+3. `setup.sh` adds the services to their runlevels (`devfs`, `dmesg`; `hostname`, `bootmisc`, `syslog`; `networking`) and takes `modules` and `mdev` out: the kernel is monolithic and devtmpfs already fills `/dev`. It also clears root's password.
+4. `vm.cmdline` has no `init=`, so the kernel runs `/sbin/init`.
+
+`networking` brings eth0 up with `udhcpc`, which goes to the background when no DHCP server answers, so boot doesn't wait for a network.
 
 ## New Alpine version / arch
 

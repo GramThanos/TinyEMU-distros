@@ -25,7 +25,8 @@ recipes/<name>/recipe.yml    (editable image recipe)
         ▼   scripts/build.sh <name>   (in the Docker builder)
    ┌────────────────────────────────────────────────────────────┐
    │ backend (alpine|debian|buildroot)                           │
-   │   fetch/unpack rootfs → apply overlay/ → mke2fs -d rootfs   │
+   │   fetch/unpack rootfs → packages → overlay/ → setup.sh      │
+   │   → mke2fs -d rootfs                                        │
    │   fetch/build kernel → kernel.bin                           │
    ├────────────────────────────────────────────────────────────┤
    │ chunk.py     rootfs.ext2 → blk%09u.bin[.gz] + blk.txt       │
@@ -59,6 +60,9 @@ Then boot or host it (see [hosting-and-boot.md](hosting-and-boot.md) for more in
 
 ## Status
 
+- **Two variants per distro** — `<name>` boots the distro's init (OpenRC / sysvinit)
+  with networking and basic utilities; `<name>-lite` boots a bare root shell
+  (`init=/bin/sh`). See [recipe-reference.md](recipe-reference.md#recipeyml).
 - **Alpine x86** — done & verified (native `drive0` + browser chunked HTTP).
 - **Debian 12 x86** — done (the official `i386/debian:bookworm-slim` layer).
 - **Buildroot** — not implemented; the backend is a stub, the process is

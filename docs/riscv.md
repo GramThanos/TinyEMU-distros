@@ -1,21 +1,25 @@
 # RISC-V guests
 
-**Status: builds and boots.** Two recipes, both 64-bit:
+**Status: builds and boots.** Four recipes, all 64-bit:
 
 | Recipe | System | Disk |
 |--------|--------|------|
-| [`alpine-3.20-riscv64`](../recipes/alpine-3.20-riscv64) | Alpine 3.20 + python3, nano | 128 MB |
-| [`debian-13-riscv64`](../recipes/debian-13-riscv64) | Debian 13 trixie slim + python3, nano, procps, less | 256 MB |
+| [`alpine-3.20-riscv64`](../recipes/alpine-3.20-riscv64) | Alpine 3.20 with OpenRC + python3, nano, less, curl, htop | 192 MB |
+| [`alpine-3.20-riscv64-lite`](../recipes/alpine-3.20-riscv64-lite) | Alpine 3.20, no init + python3, nano | 128 MB |
+| [`debian-13-riscv64`](../recipes/debian-13-riscv64) | Debian 13 trixie with sysvinit + python3, nano, procps, htop, less, curl, e2fsprogs | 384 MB |
+| [`debian-13-riscv64-lite`](../recipes/debian-13-riscv64-lite) | Debian 13 trixie slim, no init + python3, nano, procps, less | 256 MB |
 
 Debian is 13, not 12 as on x86: riscv64 became an official Debian architecture with
-trixie. Both boot straight to a root shell on `hvc0` (`init=/bin/sh`), as the x86
-images do, and run in TinyEMU's `riscv64` machine, natively (`temu`) or in the
-browser engine. In the browser, Alpine riscv64 reaches its shell in about 5 s,
-against about a minute for Alpine x86.
+trixie. The `-lite` images boot straight to a root shell on `hvc0` (`init=/bin/sh`);
+the others boot their init system and log root in on `hvc0`, as the x86 images do
+(see the [Alpine](flavour-alpine.md) and [Debian](flavour-debian.md) guides). All run in
+TinyEMU's `riscv64` machine, natively (`temu`) or in the browser engine. In the
+browser, Alpine riscv64 lite reaches its shell in about 5 s, against about a minute
+for Alpine x86 lite.
 
 ```bash
 RECIPE=alpine-3.20-riscv64 docker compose run --rm build   # -> build/alpine-3.20-riscv64/
-RECIPE=debian-13-riscv64  docker compose run --rm build
+RECIPE=debian-13-riscv64-lite docker compose run --rm build
 ```
 
 ## What a RISC-V build adds

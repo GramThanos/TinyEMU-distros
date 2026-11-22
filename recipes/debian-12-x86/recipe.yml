@@ -1,7 +1,8 @@
-# Debian 12 "bookworm" (i386) — minimal rootfs on a virtio-block disk.
+# Debian 12 "bookworm" (i386) — with sysvinit and basic utilities, on a virtio-block disk.
 # Built by: scripts/build.sh debian-12-x86
+# (recipes/debian-12-x86-lite is the same distro with no init: a bare root shell.)
 name: debian-12-x86
-description: Debian 12 bookworm (i386), slim rootfs on a virtio-block disk.
+description: Debian 12 bookworm (i386) with sysvinit, networking and basic utilities.
 arch: x86
 backend: debian
 
@@ -13,12 +14,25 @@ rootfs:
   # the dist-i386 branch.
   image: i386/debian
   digest: sha256:cf916cd28bf8a94b890c149d6b2cdc665c8beb3378aa9c98a18b6ec1bfe54b0c
-  size_mb: 256
+  size_mb: 384
   packages:                       # via a chroot'd apt-get at build time
-    - python3
-    - nano
+    # init: sysvinit, not systemd, which is far too heavy for a software CPU
+    - sysvinit-core
+    - login
+    # networking: ifupdown brings eth0 up with udhcpc at boot
+    - ifupdown
+    - udhcpc
+    - iproute2
+    - iputils-ping
+    - curl
+    - ca-certificates
+    # tools
     - procps                      # ps, top, pkill
+    - htop
     - less
+    - nano
+    - python3
+  # setup.sh (next to this file) then unlocks root.
 
 kernel:
   # The same kernel as alpine-3.20-x86: kernel.org LTS + the tinyemu fragment.
@@ -33,6 +47,8 @@ disk:
 vm:
   machine: pc
   memory_mb: 256
-  # The slim image has no init system (it is a container base), so boot
-  # straight to a root shell on the hvc0 console, as the Alpine image does.
-  cmdline: "loglevel=1 console=hvc0 root=/dev/vda rw init=/bin/sh"
+  # No init=: the kernel runs /sbin/init (sysvinit), which runs the rc scripts
+  # and a root autologin on hvc0 (overlay/etc/inittab).
+  # No loglevel=: the kernel prints its boot log on hvc0, so a slow boot shows
+  # progress from the first second (the -lite recipes keep loglevel=1, quiet).
+  cmdline: "console=hvc0 root=/dev/vda rw"

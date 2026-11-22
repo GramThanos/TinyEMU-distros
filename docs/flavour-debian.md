@@ -1,10 +1,16 @@
 # Flavour: Debian
 
-**Status: builds.** `recipes/debian-12-x86` is Debian 12 "bookworm" i386, from the
-official `i386/debian:bookworm-slim` image, with python3, nano, procps and less.
+**Status: builds.** Debian 12 "bookworm" i386, from the official
+`i386/debian:bookworm-slim` image, in two recipes:
 
-Backend: [`scripts/backends/debian.sh`](../scripts/backends/debian.sh) ·
-Recipe: [`recipes/debian-12-x86/`](../recipes/debian-12-x86)
+| Recipe | Boots into | Packages | Disk |
+|--------|-----------|----------|------|
+| [`debian-12-x86`](../recipes/debian-12-x86) | sysvinit, DHCP on eth0, root autologin on `hvc0` | sysvinit-core, ifupdown, udhcpc, iproute2, iputils-ping, curl, procps, htop, less, nano, python3 | 384 MB |
+| [`debian-12-x86-lite`](../recipes/debian-12-x86-lite) | a root shell as PID 1 (`init=/bin/sh`) | python3, nano, procps, less | 256 MB |
+
+(`debian-13-riscv64` and `debian-13-riscv64-lite` are the same for trixie on RISC-V, see [riscv.md](riscv.md).)
+
+Backend: [`scripts/backends/debian.sh`](../scripts/backends/debian.sh)
 
 ## Where the rootfs comes from
 
@@ -35,10 +41,12 @@ it), for a rootfs hosted anywhere else.
 1. Fetches and verifies the rootfs (above) and untars it into `rootfs.dir/`.
 2. Installs `rootfs.packages` with `apt-get` in a chroot (i386 runs on the x86_64
    builder). It makes the few device nodes maintainer scripts need (Docker grants
-   CAP_MKNOD), and afterwards drops them, the apt lists and `resolv.conf`. This step
+   CAP_MKNOD) and a `policy-rc.d` that stops them starting services in the
+   chroot, and afterwards drops those, the apt lists and `resolv.conf`. This step
    uses the network, so it is the one part that isn't byte-for-byte reproducible.
 3. Applies `overlay/` (`cp -a overlay/. rootfs.dir/`).
-4. `mke2fs -q -t ext2 -d rootfs.dir rootfs.ext2 <size_mb>M` + `tune2fs -c0 -i0`.
+4. Runs the recipe's `setup.sh`, when it has one, inside the rootfs (`chroot`).
+5. `mke2fs -q -t ext2 -d rootfs.dir rootfs.ext2 <size_mb>M` + `tune2fs -c0 -i0`.
 
 The kernel comes from `scripts/kernel.sh`: the recipe builds the same 6.12 LTS
 kernel as `alpine-3.20-x86`.
@@ -46,13 +54,16 @@ kernel as `alpine-3.20-x86`.
 ## Build it
 
 ```bash
-RECIPE=debian-12-x86 docker compose run --rm build   # -> build/debian-12-x86/
+RECIPE=debian-12-x86 docker compose run --rm build        # -> build/debian-12-x86/
+RECIPE=debian-12-x86-lite docker compose run --rm build   # -> build/debian-12-x86-lite/
 ```
 
 ## init & console
 
-The slim image is a container base, so it has **no init system**. The recipe boots
-straight into a root shell on the virtio console, as the Alpine image does:
+The slim image is a container base, so it has **no init system**.
+
+**Lite** boots straight into a root shell on the virtio console, as the Alpine lite
+image does:
 
 ```yaml
 vm:
@@ -60,9 +71,19 @@ vm:
 ```
 
 `/bin/sh` is dash. The kernel mounts devtmpfs on `/dev`; `/proc` is not mounted
-until something mounts it (the TinyEMU agent page does). For a full init, install
-`systemd-sysv` or `sysvinit-core` through `packages`, drop `init=`, and enable a
-getty on `hvc0` in the overlay.
+until something mounts it (the TinyEMU agent page does).
+
+**Full** installs `sysvinit-core` and boots it (no `init=`). systemd would work
+too, but on a software CPU its start-up costs far more than sysvinit's shell
+scripts. The pieces:
+
+- `overlay/etc/inittab`: runlevel 2, and the only getty, an `agetty --autologin root`
+  on `hvc0` (sysvinit's default one names `tty1`..`tty6`, which TinyEMU doesn't have);
+- `overlay/etc/fstab`: `/` on `/dev/vda`, no fsck at boot;
+- `overlay/etc/network/interfaces`: `lo`, and `eth0` by DHCP. `ifupdown` runs
+  `udhcpc -n`, which gives up after a few tries when no server answers;
+- `setup.sh`: clears root's password. The packages enabled their own init
+  scripts when they were installed.
 
 ## Kernel note
 

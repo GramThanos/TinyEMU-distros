@@ -1,0 +1,3 @@
+#!/bin/sh
+# Called by getty -n -l on hvc0 (see /etc/inittab): log root straight in.
+exec /bin/login -f root

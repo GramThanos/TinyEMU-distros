@@ -1,0 +1,11 @@
+# /etc/inittab — TinyEMU: the only console is hvc0 (virtio-console).
+
+::sysinit:/sbin/openrc sysinit
+::sysinit:/sbin/openrc boot
+::wait:/sbin/openrc default
+
+# Root autologin on the console.
+hvc0::respawn:/sbin/getty -n -l /usr/local/sbin/autologin -L 115200 hvc0 linux
+
+::ctrlaltdel:/sbin/reboot
+::shutdown:/sbin/openrc shutdown

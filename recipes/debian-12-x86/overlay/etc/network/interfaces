@@ -1,0 +1,7 @@
+auto lo
+iface lo inet loopback
+
+# TinyEMU's eth0 (user-mode networking natively, the page's network in a browser).
+# ifupdown runs udhcpc -n, which gives up after a few tries if no lease comes.
+auto eth0
+iface eth0 inet dhcp

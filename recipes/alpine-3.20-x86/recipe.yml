@@ -1,7 +1,8 @@
-# Alpine Linux 3.20 (i686) — minimal rootfs on a virtio-block disk.
+# Alpine Linux 3.20 (i686) — with OpenRC and basic utilities, on a virtio-block disk.
 # Built by: scripts/build.sh alpine-3.20-x86
+# (recipes/alpine-3.20-x86-lite is the same distro with no init: a bare root shell.)
 name: alpine-3.20-x86
-description: Alpine Linux 3.20 (i686), minimal rootfs on a virtio-block disk.
+description: Alpine Linux 3.20 (i686) with OpenRC, networking and basic utilities.
 arch: x86                         # x86 | riscv32 | riscv64 (framework is arch-ready)
 backend: alpine                   # alpine | debian | buildroot
 
@@ -10,17 +11,20 @@ rootfs:
   mirror: https://dl-cdn.alpinelinux.org/alpine
   # tarball name under $mirror/v3.20/releases/$arch/
   minirootfs: alpine-minirootfs-3.20.3-x86.tar.gz
-  size_mb: 128                    # ext2 image size (mke2fs -d)
-  packages:                       # added via chroot'd apk, else at first boot
+  size_mb: 192                    # ext2 image size (mke2fs -d)
+  packages:                       # via a chroot'd apk at build time
+    - alpine-base                 # openrc, busybox-openrc, mdev, alpine-conf
+    - ifupdown-ng                 # the networking service (DHCP through udhcpc)
     - python3
     - nano
+    - less
+    - curl
+    - htop
+  # setup.sh (next to this file) then enables the OpenRC services and unlocks root.
 
 kernel:
   source: build                   # build | prebuilt | buildroot
   version: "6.12.109"             # built from kernel.org (v6.x LTS) for source: build
-  # Quick alternative — fetch a prebuilt kernel instead of compiling one:
-  #   source: prebuilt
-  #   url: https://bellard.org/jslinux/kernel-x86.bin
 
 disk:
   mode: block                     # block (drive0 chunked) | 9p (fs0)
@@ -30,6 +34,8 @@ disk:
 vm:
   machine: pc
   memory_mb: 128
-  # The base minirootfs has no init/getty configured, so boot straight to a
-  # shell on the hvc0 console. (A full Alpine with OpenRC would drop init=.)
-  cmdline: "loglevel=1 console=hvc0 root=/dev/vda rw init=/bin/sh"
+  # No init=: the kernel runs /sbin/init (busybox), which starts OpenRC and a
+  # root autologin on hvc0 (overlay/etc/inittab).
+  # No loglevel=: the kernel prints its boot log on hvc0, so a slow boot shows
+  # progress from the first second (the -lite recipes keep loglevel=1, quiet).
+  cmdline: "console=hvc0 root=/dev/vda rw"

@@ -1,7 +1,8 @@
-# Alpine Linux 3.20 (riscv64) — minimal rootfs on a virtio-block disk.
+# Alpine Linux 3.20 (riscv64) — with OpenRC and basic utilities, on a virtio-block disk.
 # Built by: scripts/build.sh alpine-3.20-riscv64
+# (recipes/alpine-3.20-riscv64-lite is the same distro with no init: a bare root shell.)
 name: alpine-3.20-riscv64
-description: Alpine Linux 3.20 (riscv64), minimal rootfs on a virtio-block disk.
+description: Alpine Linux 3.20 (riscv64) with OpenRC, networking and basic utilities.
 arch: riscv64
 backend: alpine
 
@@ -9,10 +10,16 @@ rootfs:
   version: "3.20.3"
   mirror: https://dl-cdn.alpinelinux.org/alpine
   minirootfs: alpine-minirootfs-3.20.3-riscv64.tar.gz
-  size_mb: 128
+  size_mb: 192
   packages:                       # via a chroot'd apk under QEMU user mode
+    - alpine-base                 # openrc, busybox-openrc, mdev, alpine-conf
+    - ifupdown-ng                 # the networking service (DHCP through udhcpc)
     - python3
     - nano
+    - less
+    - curl
+    - htop
+  # setup.sh (next to this file) then enables the OpenRC services and unlocks root.
 
 kernel:
   # kernel.org LTS, cross-compiled, + kernels/config/tinyemu-riscv.fragment.
@@ -33,4 +40,8 @@ vm:
   machine: riscv64
   # OpenSBI moves the device tree 34 MB into RAM, so keep this well above that.
   memory_mb: 128
-  cmdline: "loglevel=1 console=hvc0 root=/dev/vda rw init=/bin/sh"
+  # No init=: the kernel runs /sbin/init (busybox), which starts OpenRC and a
+  # root autologin on hvc0 (overlay/etc/inittab).
+  # No loglevel=: the kernel prints its boot log on hvc0, so a slow boot shows
+  # progress from the first second (the -lite recipes keep loglevel=1, quiet).
+  cmdline: "console=hvc0 root=/dev/vda rw"

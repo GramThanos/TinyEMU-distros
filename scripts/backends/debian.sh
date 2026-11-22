@@ -19,7 +19,8 @@
 # run the guest arch (i386 binaries run on an x86_64 builder, riscv64 ones
 # through QEMU user mode, set up by scripts/binfmt.sh); otherwise they
 # are skipped with a warning. That step uses the network, so it is the one part
-# that is not byte-for-byte reproducible.
+# that is not byte-for-byte reproducible. The recipe overlay/ is applied next,
+# then the recipe's setup.sh (if any) runs inside the rootfs.
 #
 # Emits: <out>/rootfs.ext2
 set -euo pipefail
@@ -75,6 +76,8 @@ if [ -n "${pkgs:-}" ]; then
   for n in "null c 1 3" "zero c 1 5" "random c 1 8" "urandom c 1 9" "tty c 5 0"; do
     set -- $n; rm -f "$work/dev/$1"; mknod -m 666 "$work/dev/$1" "$2" "$3" "$4" || true
   done
+  # No maintainer script may start a service in the build chroot.
+  printf '#!/bin/sh\nexit 101\n' > "$work/usr/sbin/policy-rc.d"; chmod +x "$work/usr/sbin/policy-rc.d"
   if bash "$here/binfmt.sh" "$arch" && chroot "$work" /usr/bin/env DEBIAN_FRONTEND=noninteractive \
        sh -c "apt-get update -qq && apt-get install -y -qq --no-install-recommends $pkgs"; then
     echo "-- packages installed"
@@ -82,12 +85,20 @@ if [ -n "${pkgs:-}" ]; then
     echo "!! apt-get in chroot failed (arch mismatch / not root?) — add packages at first boot"
   fi
   chroot "$work" apt-get clean >/dev/null 2>&1 || true
-  rm -rf "$work"/var/lib/apt/lists/* "$work"/dev/* "$work/etc/resolv.conf"
+  rm -rf "$work"/var/lib/apt/lists/* "$work"/dev/* "$work/etc/resolv.conf" "$work/usr/sbin/policy-rc.d"
 fi
 
 if [ -d "$recipe_dir/overlay" ]; then
   echo "-- applying overlay/"
   cp -a "$recipe_dir/overlay/." "$work/"
+fi
+
+if [ -f "$recipe_dir/setup.sh" ]; then
+  echo "-- running setup.sh in the rootfs"
+  cp "$recipe_dir/setup.sh" "$work/tmp/setup.sh"
+  bash "$here/binfmt.sh" "$arch" && chroot "$work" /bin/sh /tmp/setup.sh \
+    || { echo "!! setup.sh failed"; exit 1; }
+  rm -f "$work/tmp/setup.sh"
 fi
 
 echo "-- mke2fs -d (${size_mb} MB, no mount)"

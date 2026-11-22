@@ -7,10 +7,22 @@ It's a directory under [`recipes/`](../recipes):
 recipes/<name>/
 ├── recipe.yml         backend, arch, rootfs source, kernel, disk, vm (required)
 ├── config.cfg.tmpl    templated TinyEMU .cfg (required)
-└── overlay/           files copied into the rootfs (optional)
+├── overlay/           files copied into the rootfs (optional)
+└── setup.sh           shell script run inside the rootfs, after packages and overlay/ (optional)
 ```
 
-`<name>` is the recipe id you pass to `build.sh` and the output dir name. Suggested convention: `<distro>-<version>-<arch>`, e.g. `alpine-3.20-x86`.
+`<name>` is the recipe id you pass to `build.sh` and the output dir name. Suggested convention: `<distro>-<version>-<arch>[-lite]`, e.g. `alpine-3.20-x86`.
+
+Each distro comes in two variants:
+
+| Variant | Example | Boots into |
+|---------|---------|------------|
+| full (no suffix) | `alpine-3.20-x86` | the distro's init system (OpenRC for Alpine, sysvinit for Debian), with networking up through DHCP and a root autologin on `hvc0`; ships basic utilities (python3, nano, less, curl, htop, ...) |
+| `-lite` | `alpine-3.20-x86-lite` | a bare root shell as PID 1 (`init=/bin/sh`), no services; smallest and fastest to boot, the shape a program that drives the console expects |
+
+### `setup.sh`
+
+When the recipe directory has a `setup.sh`, the backend copies it into the rootfs and runs it with `chroot <rootfs> /bin/sh /tmp/setup.sh`, after the packages are installed and `overlay/` is applied (so it can use files from the overlay). Use it for what a file copy can't do: enable services (`rc-update add`, `update-rc.d`), set passwords, fix file modes. Non-RISC-V hosts run RISC-V guests' `setup.sh` through QEMU user mode, like the package step. If it fails, the build fails.
 
 ## `recipe.yml`
 
@@ -111,15 +123,17 @@ These flow into `config.cfg.tmpl` as `$vm_*`.
 | `vm.memory_mb` | `$vm_memory_mb` | Guest RAM in MB. |
 | `vm.cmdline` | `$vm_cmdline` | Kernel command line. See below. |
 
-**About `cmdline`.** A bare Alpine *minirootfs* has no init/getty configured, so the seed recipe boots straight to a shell with `init=/bin/sh`:
+**About `cmdline`.** The full recipes boot their init system, with the kernel's boot log on the console; a bare *minirootfs* has no init/getty configured, so the `-lite` recipes boot straight to a quiet shell with `init=/bin/sh`:
 
 ```
-loglevel=1 console=hvc0 root=/dev/vda rw init=/bin/sh
+console=hvc0 root=/dev/vda rw                               # full
+loglevel=1 console=hvc0 root=/dev/vda rw init=/bin/sh       # -lite
 ```
 
+- `loglevel=1` — only emergencies reach the console. Leave it out (as the full recipes do) to watch the kernel boot: on a slow software CPU it shows the guest is starting long before init prints anything.
 - `console=hvc0` — TinyEMU's virtio console.
 - `root=/dev/vda` — the virtio-block disk (`drive0`).
-- Drop `init=/bin/sh` once the rootfs has a real init (OpenRC, systemV, systemd) so the distro boots normally.
+- `init=/bin/sh` — only in the `-lite` recipes, whose rootfs has no init. The full recipes leave it out, so the kernel runs `/sbin/init` and the distro boots normally.
 
 ## `config.cfg.tmpl`
 
@@ -151,8 +165,8 @@ Notes:
 
 ## Adding a new recipe
 
-1. `cp -r recipes/alpine-3.20-x86 recipes/<new-name>` and edit `recipe.yml`.
-2. Adjust `overlay/` (see the flavour guide for what to put there).
+1. `cp -r recipes/alpine-3.20-x86 recipes/<new-name>` (or `alpine-3.20-x86-lite` for a no-init image) and edit `recipe.yml`.
+2. Adjust `overlay/` and `setup.sh` (see the flavour guide for what to put there).
 3. `RECIPE=<new-name> docker compose run --rm build`.
 4. Boot-test it — [hosting-and-boot.md](hosting-and-boot.md).
 

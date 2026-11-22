@@ -1,0 +1,38 @@
+# Alpine Linux 3.20 (riscv64) — LITE: minimal rootfs, no init system, on a virtio-block disk.
+# Built by: scripts/build.sh alpine-3.20-riscv64-lite
+name: alpine-3.20-riscv64-lite
+description: Alpine Linux 3.20 (riscv64) lite: no init, boots to a root shell.
+arch: riscv64
+backend: alpine
+
+rootfs:
+  version: "3.20.3"
+  mirror: https://dl-cdn.alpinelinux.org/alpine
+  minirootfs: alpine-minirootfs-3.20.3-riscv64.tar.gz
+  size_mb: 128
+  packages:                       # via a chroot'd apk under QEMU user mode
+    - python3
+    - nano
+
+kernel:
+  # kernel.org LTS, cross-compiled, + kernels/config/tinyemu-riscv.fragment.
+  source: build
+  version: "6.12.109"
+
+firmware:
+  # OpenSBI's generic fw_jump, built from source (scripts/firmware.sh).
+  opensbi: "1.6"
+  sha256: d11702103f177a2914e94eec57ce5ed820296d874f6b6525c4482e55d71a3667
+
+disk:
+  mode: block
+  block_size_kb: 512               # chunk size; must match chunk.py -b
+  compression: gzip               # blk*.bin.gz; needs a 2026-11+ TinyEMU (none: raw .bin)
+
+vm:
+  machine: riscv64
+  # OpenSBI moves the device tree 34 MB into RAM, so keep this well above that.
+  memory_mb: 128
+  # No init system: boot straight to a root shell on hvc0.
+  # (recipes/alpine-3.20-riscv64 is the variant with OpenRC.)
+  cmdline: "loglevel=1 console=hvc0 root=/dev/vda rw init=/bin/sh"

@@ -1,0 +1,43 @@
+# Debian 13 "trixie" (riscv64) — LITE: minimal rootfs, no init system, on a virtio-block disk.
+# Built by: scripts/build.sh debian-13-riscv64-lite
+#
+# Debian 13, not 12: riscv64 became an official Debian architecture with trixie.
+name: debian-13-riscv64-lite
+description: Debian 13 trixie (riscv64) lite: no init, boots to a root shell.
+arch: riscv64
+backend: debian
+
+rootfs:
+  # The official riscv64/debian:trixie-slim image (Debian 13.7, debuerreotype
+  # build of 2026-11-04), pinned by its single layer's digest: see
+  # https://github.com/debuerreotype/docker-debian-artifacts/tree/d6c395f6ddd3c6e0ec727e195e3ff5cf640e1f0a/trixie/slim
+  # (oci/index.json names the layer). To update, take the new layer digest from
+  # the dist-riscv64 branch.
+  image: riscv64/debian
+  digest: sha256:4b8428ae1a4b0dfd18fb4aa2bf9a6a71d7217123155666c4225a7e1b9aa074af
+  size_mb: 256
+  packages:                       # via a chroot'd apt-get under QEMU user mode
+    - python3
+    - nano
+    - procps                      # ps, top, pkill
+    - less
+
+kernel:
+  source: build
+  version: "6.12.109"
+
+firmware:
+  opensbi: "1.6"
+  sha256: d11702103f177a2914e94eec57ce5ed820296d874f6b6525c4482e55d71a3667
+
+disk:
+  mode: block
+  block_size_kb: 512               # chunk size; must match chunk.py -b
+  compression: gzip               # blk*.bin.gz; needs a 2026-11+ TinyEMU (none: raw .bin)
+
+vm:
+  machine: riscv64
+  memory_mb: 256
+  # The slim image has no init system, so boot straight to a root shell on hvc0.
+  # (recipes/debian-13-riscv64 is the variant with sysvinit.)
+  cmdline: "loglevel=1 console=hvc0 root=/dev/vda rw init=/bin/sh"
