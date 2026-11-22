@@ -78,7 +78,7 @@ sed -i 's#${ASSET_BASE}#https://cdn.example.com/tinyemu/alpine-3.20-x86#g' \
 # upload build/alpine-3.20-x86/* to that URL; open config.cfg in TinyEMU (web or native).
 ```
 
-Helpers: `scripts/publish.sh <dist>` packages + uploads to a GitHub Release; `scripts/stage-web.sh <dist> <jsLab-dir> [origin]` copies a build into a [jsLab](https://github.com/gramthanos/jsLab) checkout for local testing (writes `_distro/manifest.json`; open `demos/linux-distro.html`).
+Helpers: `bash scripts/publish.sh <dist>` packages + uploads to a GitHub Release; `bash scripts/stage-web.sh <dist> <jsLab-dir> [origin]` copies a build into a [jsLab](https://github.com/gramthanos/jsLab) checkout for local testing (writes `_distro/manifest.json`; open `demos/linux-distro.html`).
 
 ## Status
 

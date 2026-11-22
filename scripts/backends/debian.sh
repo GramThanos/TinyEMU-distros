@@ -75,7 +75,7 @@ if [ -n "${pkgs:-}" ]; then
   for n in "null c 1 3" "zero c 1 5" "random c 1 8" "urandom c 1 9" "tty c 5 0"; do
     set -- $n; rm -f "$work/dev/$1"; mknod -m 666 "$work/dev/$1" "$2" "$3" "$4" || true
   done
-  if "$here/binfmt.sh" "$arch" && chroot "$work" /usr/bin/env DEBIAN_FRONTEND=noninteractive \
+  if bash "$here/binfmt.sh" "$arch" && chroot "$work" /usr/bin/env DEBIAN_FRONTEND=noninteractive \
        sh -c "apt-get update -qq && apt-get install -y -qq --no-install-recommends $pkgs"; then
     echo "-- packages installed"
   else

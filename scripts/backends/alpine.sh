@@ -34,7 +34,7 @@ pkgs="$(yq rootfs.packages || true)"
 if [ -n "${pkgs:-}" ]; then
   echo "-- installing packages: $pkgs"
   cp /etc/resolv.conf "$work/etc/resolv.conf" 2>/dev/null || true
-  if "$here/binfmt.sh" "$arch" && chroot "$work" /sbin/apk --no-cache add $pkgs; then
+  if bash "$here/binfmt.sh" "$arch" && chroot "$work" /sbin/apk --no-cache add $pkgs; then
     echo "-- packages installed"
   else
     echo "!! apk-in-chroot failed (arch mismatch / not root?) — add at first boot"

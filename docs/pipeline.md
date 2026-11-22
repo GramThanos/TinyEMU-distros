@@ -31,7 +31,7 @@ docker compose run --rm build
 
 Since the [`../docker-compose.yml`](../docker-compose.yml) mounts the repo at `/work`, so output lands back on the host in `build/<name>/`.
 
-You can also run `scripts/build.sh <name>` directly on a Linux host or in WSL if you have `e2fsprogs` + `python3-yaml`.
+You can also run `bash scripts/build.sh <name>` directly on a Linux host or in WSL if you have `e2fsprogs` + `python3-yaml`.
 Do **not** run the scripts from Git Bash on Windows as it mangles absolute POSIX paths passed to `python.exe` (see [troubleshooting.md](troubleshooting.md)).
 
 ## Stage by stage

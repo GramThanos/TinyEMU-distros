@@ -89,7 +89,7 @@ registers it in its demos' dropdown:
 
 ```bash
 # in WSL / the builder — NOT Git Bash (it mangles POSIX paths to python.exe)
-scripts/stage-web.sh <name> /path/to/jsLab http://localhost:8000
+bash scripts/stage-web.sh <name> /path/to/jsLab http://localhost:8000
 # copies assets to jsLab/_distro/<name>/, writes jsLab/_distro/manifest.json,
 # renders config.cfg with ABSOLUTE URLs against the origin
 ```
@@ -117,7 +117,7 @@ bring it up).
 Packages the hostable files and (by default) uploads to a GitHub Release:
 
 ```bash
-scripts/publish.sh <name>
+bash scripts/publish.sh <name>
 # tars kernel.bin + blk.txt + the chunks + config.cfg  (NOT rootfs.ext2)
 # gh release create/upload distro-<name>
 ```

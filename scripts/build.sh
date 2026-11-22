@@ -26,17 +26,17 @@ mkdir -p "$out"
 
 echo "== building '$name' (backend=$backend) -> $out"
 case "$backend" in
-  alpine)    "$here/backends/alpine.sh"    "$recipe_dir" "$out" ;;
-  debian)    "$here/backends/debian.sh"    "$recipe_dir" "$out" ;;
-  buildroot) "$here/backends/buildroot.sh" "$recipe_dir" "$out" ;;
+  alpine)    bash "$here/backends/alpine.sh"    "$recipe_dir" "$out" ;;
+  debian)    bash "$here/backends/debian.sh"    "$recipe_dir" "$out" ;;
+  buildroot) bash "$here/backends/buildroot.sh" "$recipe_dir" "$out" ;;
   *) echo "unknown backend: $backend"; exit 1 ;;
 esac
 
 echo "== kernel (source=$(yq kernel.source))"
-"$here/kernel.sh" "$recipe_dir" "$out"
+bash "$here/kernel.sh" "$recipe_dir" "$out"
 
 # RISC-V guests boot through OpenSBI (bios.bin); x86 needs no firmware image.
-case "$(yq arch)" in riscv*) echo "== firmware"; "$here/firmware.sh" "$recipe_dir" "$out" ;; esac
+case "$(yq arch)" in riscv*) echo "== firmware"; bash "$here/firmware.sh" "$recipe_dir" "$out" ;; esac
 
 mode="$(yq disk.mode)"
 if [ "$mode" = "block" ]; then
