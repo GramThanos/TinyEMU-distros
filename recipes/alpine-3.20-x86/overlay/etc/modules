@@ -1,0 +1,3 @@
+# Kernel modules to load at boot, one per line. None: the TinyEMU kernel is
+# monolithic (everything built in, no /lib/modules), so modprobe has nothing
+# to load. (OpenRC's hwclock pulls in the modules service, which reads this.)

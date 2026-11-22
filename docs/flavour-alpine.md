@@ -68,6 +68,7 @@ recipes/alpine-3.20-x86/overlay/
 │   ├── fstab                 / on /dev/vda
 │   ├── hostname, hosts       tinyemu-alpine
 │   ├── inittab               OpenRC + a getty on hvc0
+│   ├── modules               empty: the kernel is monolithic
 │   ├── motd
 │   └── network/interfaces    lo + eth0 by DHCP
 └── usr/local/sbin/autologin  what that getty runs: login -f root
