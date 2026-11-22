@@ -114,15 +114,78 @@ bring it up).
 
 ## Publish it — `publish.sh`
 
-Packages the hostable files and (by default) uploads to a GitHub Release:
+Stages the release files in `build/release/` and (by default) uploads them to a
+GitHub Release. Per recipe `<name>`:
+
+| File | What |
+|------|------|
+| `<name>.tar` | for hosting: kernel.bin, blk.txt, the chunks, config.cfg (literal `${ASSET_BASE}`), bios.bin (RISC-V) |
+| `<name>-kernel.bin` | the raw kernel |
+| `<name>-bios.bin` | the raw OpenSBI firmware (RISC-V only) |
+| `<name>-rootfs.img.gz` | the whole ext2 disk (`rootfs.ext2`), unchunked, gzipped (256 MB → ~40 MB); `gunzip` it before use |
+| `<name>-config.cfg` | boots the raw files above by relative path when they share a directory: `temu <name>-config.cfg` |
 
 ```bash
 bash scripts/publish.sh <name>
-# tars kernel.bin + blk.txt + the chunks + config.cfg  (NOT rootfs.ext2)
-# gh release create/upload distro-<name>
+# -> build/release/<name>.tar + <name>-*, uploaded to release distro-<name>
+
+bash scripts/publish.sh -t distros-20261122 --latest <name> <name2> ...
+# several images, one release (tag distros-20261122)
+
+bash scripts/publish.sh --pack-only <name>     # only stage the files, no upload
+bash scripts/publish.sh --no-raw <name>        # only the .tar
 ```
 
-No `gh`? It just leaves the tarball at `build/<name>.tar` for you to upload
+An existing tag is reused: files of the same name are replaced, others added.
+
+### From GitHub Actions — the `release` workflow
+
+Actions → **release** → **Run workflow** builds the chosen recipes (`all` by
+default) in parallel and, once **all** of them have built, publishes them to
+**one** release. Inputs:
+
+| Input | Default | |
+|-------|---------|---|
+| `recipes` | `all` | space-separated recipe names |
+| `tag` | `distros-<YYYYMMDD>-<run number>` | release tag; an existing tag gets its images replaced |
+| `latest` | on | mark it as the latest release |
+| `pages` | on | redeploy GitHub Pages with this release's images |
+
+With `latest` on, every file is always at
+`https://github.com/<owner>/<repo>/releases/latest/download/<file>` (e.g. `<name>.tar`, `<name>-rootfs.img.gz`).
+
+### GitHub Pages — boot straight from the web
+
+With `pages` on, the workflow's last job downloads **every** `.tar` in the
+release (including images a reused tag kept from earlier runs), extracts them
+with [`scripts/site.sh`](../scripts/site.sh) and deploys the result to GitHub
+Pages, **replacing** the previous site:
+
+```
+https://<owner>.github.io/<repo>/
+├── index.html                list of images
+├── manifest.json             { "distros": [ {name, description, arch, config, url} ] }
+└── <name>/
+    ├── config.cfg            ${ASSET_BASE} = https://<owner>.github.io/<repo>/<name>
+    ├── kernel.bin, blk.txt, blk*.bin.gz
+    └── bios.bin              (RISC-V)
+```
+
+Open `https://<owner>.github.io/<repo>/<name>/config.cfg` in TinyEMU. GitHub
+Pages sends `Access-Control-Allow-Origin: *`, so a page on another origin (e.g.
+jsLab) can boot it; `manifest.json` uses the same format `stage-web.sh` writes.
+
+- **Enable it once:** repository Settings → Pages → Source: **GitHub Actions**.
+- **Only the chunked form is hosted:** the raw `<name>-*` files (whole disk
+  `.img.gz`, raw config) are for download and stay on the release.
+- **Size:** a Pages site is capped at 1 GB; `site.sh` fails if the site would
+  exceed it (the four images today: ~180 MB).
+- **A run of only some recipes under a new tag** deploys only those; use the
+  same tag as the full release (or `recipes: all`) to keep the others.
+
+Build the same site locally: `bash scripts/site.sh site https://example.com/images build/release/*.tar`.
+
+No `gh`? It just leaves the files in `build/release/` for you to upload
 anywhere. Then point `${ASSET_BASE}` at wherever the extracted files live:
 
 ```bash

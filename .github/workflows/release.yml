@@ -1,6 +1,13 @@
-# Build distro images on GitHub and publish each as a GitHub Release asset:
-# release `distro-<name>`, asset `<name>.tar` (kernel.bin, bios.bin for RISC-V,
-# blk.txt, blk*.bin[.gz], config.cfg with a literal ${ASSET_BASE}).
+# Build distro images on GitHub and publish them all to ONE GitHub Release:
+# tag from the `tag` input (default distros-<YYYYMMDD>-<run>). Per recipe:
+# `<name>.tar` (kernel.bin, bios.bin for RISC-V, blk.txt, blk*.bin[.gz],
+# config.cfg with a literal ${ASSET_BASE}) plus the raw files
+# `<name>-kernel.bin`, `<name>-rootfs.img.gz`, `<name>-config.cfg`
+# (and `<name>-bios.bin` for RISC-V). See scripts/publish.sh.
+# The release is only made once every selected recipe has built.
+# Then (input `pages`) GitHub Pages is redeployed with every .tar in that
+# release extracted, ready to boot: <pages-url>/<name>/config.cfg (scripts/site.sh).
+# Pages must be enabled once: Settings -> Pages -> Source: GitHub Actions.
 # Run by hand: Actions -> release -> Run workflow.
 name: release
 
@@ -11,6 +18,18 @@ on:
         description: 'Recipes to build, space-separated, or "all"'
         required: false
         default: all
+      tag:
+        description: 'Release tag (empty: distros-<YYYYMMDD>-<run number>). An existing tag gets its images replaced.'
+        required: false
+        default: ''
+      latest:
+        description: 'Mark the release as latest'
+        type: boolean
+        default: true
+      pages:
+        description: "Deploy this release's images to GitHub Pages (replaces the site)"
+        type: boolean
+        default: true
 
 permissions:
   contents: write
@@ -20,17 +39,24 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       recipes: ${{ steps.list.outputs.recipes }}
+      tag: ${{ steps.list.outputs.tag }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - id: list
         env:
           WANT: ${{ inputs.recipes }}
+          TAG: ${{ inputs.tag }}
+          RUN: ${{ github.run_number }}
         run: |
           all=$(ls recipes)
           if [ -z "$WANT" ] || [ "$WANT" = all ]; then sel="$all"; else sel="$WANT"; fi
           for r in $sel; do
             [ -f "recipes/$r/recipe.yml" ] || { echo "no recipe: $r"; exit 1; }
           done
+          [ -n "$TAG" ] || TAG="distros-$(date -u +%Y%m%d)-$RUN"
+          git check-ref-format "tags/$TAG" || { echo "invalid tag: $TAG"; exit 1; }
+          echo "release tag: $TAG"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
           echo "recipes=$(printf '%s\n' $sel | jq -R . | jq -sc .)" >> "$GITHUB_OUTPUT"
 
   build:
@@ -42,16 +68,81 @@ jobs:
       matrix:
         recipe: ${{ fromJSON(needs.plan.outputs.recipes) }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Build the builder image
         run: docker compose build builder
       - name: Build ${{ matrix.recipe }}
         # build/ made here, not by the (root) container, so publish.sh can write
         # build/<name>.tar as the runner user.
+        env:
+          RECIPE: ${{ matrix.recipe }}
         run: |
           mkdir -p build
-          RECIPE=${{ matrix.recipe }} docker compose run --rm build
-      - name: Publish
+          docker compose run --rm build
+      - name: Package
+        # -> build/release/<name>.tar + <name>-{kernel.bin,rootfs.img.gz,config.cfg[,bios.bin]}
+        run: bash scripts/publish.sh --pack-only "${{ matrix.recipe }}"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: image-${{ matrix.recipe }}
+          path: build/release/
+          if-no-files-found: error
+          compression-level: 0      # the disk data is already gzipped
+          retention-days: 1
+
+  release:
+    needs: [plan, build]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: image-*
+          path: build/release
+          merge-multiple: true
+      - name: Publish to ${{ needs.plan.outputs.tag }}
         env:
           GH_TOKEN: ${{ github.token }}
-        run: bash scripts/publish.sh ${{ matrix.recipe }}
+          TAG: ${{ needs.plan.outputs.tag }}
+          LATEST: ${{ inputs.latest }}
+          RECIPES: ${{ join(fromJSON(needs.plan.outputs.recipes), ' ') }}
+        run: |
+          ls -la build/release
+          bash scripts/publish.sh -t "$TAG" $([ "$LATEST" = true ] && echo --latest) $RECIPES
+
+  pages:
+    needs: [plan, release]
+    if: ${{ inputs.pages }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    concurrency:
+      group: pages
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v7
+      - id: cfg
+        uses: actions/configure-pages@v6
+      - name: Fetch the release's images
+        # Every .tar in the release, not just this run's: a reused tag keeps the
+        # images from earlier runs, and the site mirrors the whole release.
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.plan.outputs.tag }}
+        run: gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --pattern '*.tar' --dir tars
+      - name: Build the site
+        env:
+          BASE_URL: ${{ steps.cfg.outputs.base_url }}
+        run: |
+          python3 -c 'import yaml' 2>/dev/null || pip install pyyaml
+          bash scripts/site.sh site "$BASE_URL" tars/*.tar
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: site
+      - id: deploy
+        uses: actions/deploy-pages@v5

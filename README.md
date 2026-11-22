@@ -32,7 +32,8 @@ To grab a TinyEMU build, visit my [TinyEMU](https://github.com/gramthanos/TinyEM
 │   ├── chunk.py               split rootfs.ext2 -> blk*.bin[.gz] + blk.txt (block_net.c)
 │   ├── mkconfig.py            render config.cfg.tmpl -> concrete .cfg
 │   ├── recipe.py              read one dotted key from recipe.yml (shell helper)
-│   ├── publish.sh <name>      package + upload build/<name> as a release artifact
+│   ├── publish.sh <name>...   package build/<name> + upload to one GitHub Release
+│   ├── site.sh <dir> <url> …  extract release .tars into a static site (GitHub Pages)
 │   └── stage-web.sh <name>    stage a build into a jsLab checkout for browser testing
 ├── docs/                      step-by-step build guides
 ├── kernels/prebuilt/          reference kernels for kernel.source: prebuilt
@@ -78,7 +79,7 @@ sed -i 's#${ASSET_BASE}#https://cdn.example.com/tinyemu/alpine-3.20-x86#g' \
 # upload build/alpine-3.20-x86/* to that URL; open config.cfg in TinyEMU (web or native).
 ```
 
-Helpers: `bash scripts/publish.sh <dist>` packages + uploads to a GitHub Release; `bash scripts/stage-web.sh <dist> <jsLab-dir> [origin]` copies a build into a [jsLab](https://github.com/gramthanos/jsLab) checkout for local testing (writes `_distro/manifest.json`; open `demos/linux-distro.html`).
+Helpers: `bash scripts/publish.sh [-t TAG] <dist>...` packages + uploads to a GitHub Release (the `release` workflow builds all recipes into one tagged release, see [docs/hosting-and-boot.md](docs/hosting-and-boot.md)); `bash scripts/stage-web.sh <dist> <jsLab-dir> [origin]` copies a build into a [jsLab](https://github.com/gramthanos/jsLab) checkout for local testing (writes `_distro/manifest.json`; open `demos/linux-distro.html`).
 
 ## Status
 
